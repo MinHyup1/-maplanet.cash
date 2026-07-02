@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>메이플랜드 캐시 효율 계산기</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root{
+    --blue:#3182f6; --blue-dark:#1b64da; --blue-weak:#e8f2ff;
+    --text:#191f28; --gray:#4e5968; --muted:#8b95a1; --faint:#b0b8c1;
+    --line:#eef0f3; --bg:#f2f4f6; --card:#ffffff;
+    --red:#f04452; --red-weak:#fdeef0; --green:#15b76d; --amber:#f59f00; --amber-weak:#fff6e6;
+    --shadow:0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    line-height:1.5; padding:32px 16px 72px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1240px;margin:0 auto}
+  .layout{display:flex;gap:16px;align-items:flex-start;margin-top:16px}
+  .sidebar{flex:0 0 330px;display:flex;flex-direction:column;gap:16px}
+  .main{flex:1;min-width:0}
+  .layout .card{margin-top:0}
+  .card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+  .card-head h2{margin:0}
+  .card-head{min-height:34px}
+  .sidebar .row{flex-direction:column;align-items:stretch;gap:12px}
+  .sidebar .field{width:100%}
+  .sidebar input[type=number]{width:100%}
+  .sidebar .chip{align-self:stretch;text-align:center}
+  @media (max-width:760px){
+    .layout{flex-direction:column}
+    .sidebar{flex:1 1 auto;width:100%}
+    .main{width:100%;max-width:100%}
+  }
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .dot{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#4593fc,#3182f6);display:grid;place-items:center;font-size:18px;box-shadow:0 4px 10px rgba(49,130,246,.35)}
+  h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 0;font-weight:500}
+  .sub a{color:var(--blue);text-decoration:none;font-weight:600}
+
+  .refresh{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .btn{
+    background:var(--blue);color:#fff;border:none;border-radius:12px;
+    padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;
+    font-family:inherit;transition:background .15s, transform .05s;
+  }
+  .btn:hover{background:var(--blue-dark)} .btn:active{transform:scale(.97)}
+  .status{font-size:12px;color:var(--muted);font-weight:500}
+  .status.err{color:var(--red)}
+
+  .card{background:var(--card);border-radius:20px;padding:22px;margin-top:16px;box-shadow:var(--shadow)}
+  .card h2{margin:0 0 14px;font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .card .desc{margin:0 0 16px;font-size:13px;color:var(--muted);font-weight:500}
+  .info{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--line);color:var(--muted);font-size:11px;font-weight:800;cursor:help;position:relative;margin-left:6px;vertical-align:middle;line-height:1}
+  .info::before{content:"?"}
+  .info:hover,.info:focus{background:var(--blue-weak);color:var(--blue);outline:none}
+  .info .tip{position:absolute;top:calc(100% + 9px);left:0;background:#2b2f36;color:#fff;font-size:12px;font-weight:500;line-height:1.55;padding:10px 13px;border-radius:10px;width:250px;opacity:0;visibility:hidden;transition:opacity .15s;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.2);text-align:left;pointer-events:none;white-space:normal}
+  .info:hover .tip,.info:focus .tip{opacity:1;visibility:visible}
+  .info .tip::before{content:"";position:absolute;bottom:100%;left:11px;border:6px solid transparent;border-bottom-color:#2b2f36}
+
+  .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field label{font-size:12.5px;color:var(--gray);font-weight:600}
+  input{font-family:inherit}
+  input[type=number]{
+    background:#fff;border:1.5px solid var(--line);border-radius:12px;
+    color:var(--text);padding:11px 13px;font-size:15px;font-weight:600;width:220px;text-align:right;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input[type=number]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-weak)}
+  input[type=number]::placeholder{color:var(--faint);font-weight:500}
+  .note{font-size:12.5px;color:var(--muted);margin:14px 0 0;font-weight:500;line-height:1.7}
+  .chip{background:var(--blue-weak);border-radius:10px;padding:11px 14px;font-size:13px;color:var(--blue);font-weight:700;align-self:flex-end;white-space:nowrap}
+  .baseinfo{background:var(--blue-weak);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:7px;margin-top:2px}
+  .baseinfo .bi{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .baseinfo .bi-k{font-size:12.5px;color:var(--gray);font-weight:600}
+  .baseinfo .bi-v{font-size:15px;color:var(--blue);font-weight:800;font-variant-numeric:tabular-nums}
+  .note b{color:var(--gray);font-weight:700}
+
+  .tbl-scroll{overflow-x:auto;margin:0 -6px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+  thead th{
+    color:var(--muted);font-weight:600;font-size:12px;padding:6px 10px 12px;
+    text-align:right;white-space:nowrap;user-select:none;border-bottom:1px solid var(--line);
+  }
+  thead th[data-sort]{cursor:pointer}
+  thead th[data-sort]:hover{color:var(--gray)}
+  thead th .arr{color:var(--blue);font-weight:800}
+  th.left,td.left{text-align:left} th.mid,td.mid{text-align:center}
+  tbody td{padding:12px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);font-weight:600}
+  tbody tr{transition:background .12s;cursor:pointer}
+  tbody tr:hover{background:#fafbfc}
+  tr.active{background:var(--blue-weak)}
+  tr.active:hover{background:#dfeeff}
+  tr.active td:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+  tr.nocost td{color:var(--muted)}
+
+  .rank{display:inline-block;min-width:24px;text-align:center;color:var(--muted);font-weight:700}
+  .rank.medal{font-size:16px}
+  .name{display:flex;align-items:center;gap:10px}
+  .name img{width:30px;height:30px;object-fit:contain;image-rendering:pixelated;background:var(--bg);border-radius:8px;padding:2px}
+  .name .nm{font-weight:700}
+  .num{font-variant-numeric:tabular-nums}
+  .price{color:var(--text)}
+  .perk{color:var(--blue);font-weight:800}
+
+  .badge{font-size:10.5px;padding:2px 7px;border-radius:7px;margin-left:7px;font-weight:700;vertical-align:middle}
+  .badge.ok{background:var(--blue-weak);color:var(--blue)}
+  .badge.guess{background:var(--amber-weak);color:var(--amber)}
+  .badge.need{background:var(--red-weak);color:var(--red)}
+  .badge.pack{background:var(--line);color:var(--gray)}  /* 캐시가가 묶음 개당 환산가임 표시 */
+
+  .cashfix{color:var(--gray);font-weight:700}
+  .mesocell{cursor:text;border-radius:7px;transition:background .12s}
+  .mesocell:hover{background:#eef3fa;box-shadow:inset 0 0 0 1px var(--line)}
+  input.cellinput{width:100%;max-width:118px;padding:6px 8px;font-size:14px;text-align:right;font-weight:700;border:1.5px solid var(--blue);border-radius:8px;background:#fff;box-shadow:0 0 0 3px var(--blue-weak);outline:none}
+  .spark{display:block;vertical-align:middle}
+  .spark-none{color:var(--faint)}
+  .spark-pct{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:1px;white-space:nowrap}
+  .edited{font-size:10px;color:var(--amber);font-weight:700;margin-left:5px;white-space:nowrap}  /* 경매장 가격 수정됨 표시(새로고침 시 리셋) */
+  .warn{color:var(--red);font-size:12.5px;font-weight:600;margin-left:8px;letter-spacing:0}  /* 시세 주의 안내(빨강) */
+  .spark-pct .up{color:var(--red)} .spark-pct .down{color:var(--blue)} .spark-pct .flat{color:var(--muted)}
+
+  .chg.up{color:var(--red)} .chg.down{color:var(--blue)} .chg.flat{color:var(--muted)}
+  .gain{font-weight:800;font-size:13.5px}
+  .gain.pos{color:var(--blue)} .gain.neg{color:var(--red)} .gain.na{color:var(--faint);font-weight:600;font-size:12.5px}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted);font-weight:500;align-items:center}
+  .legend .badge{margin:0 4px 0 0}
+
+  .sim-out{margin-top:16px;background:var(--bg);border-radius:14px;padding:16px 18px}
+  .sim-out.empty{color:var(--muted);font-weight:500;font-size:13.5px}
+  .sim-head{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .sim-head img{width:34px;height:34px;object-fit:contain;image-rendering:pixelated;background:#fff;border-radius:8px;padding:2px;flex:0 0 auto}
+  .sim-head .nm{font-weight:800;font-size:13.5px;color:var(--text);line-height:1.3}
+  .sim-head .eff{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+  .sim-kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:13.5px}
+  .sim-kv .k{color:var(--gray);font-weight:600;white-space:nowrap}
+  .sim-kv .v{font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;text-align:right}
+  .sim-kv .v small{display:block;font-size:11px;color:var(--faint);font-weight:600;margin-top:1px}
+  .sim-kv.total{border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
+  .sim-kv.win .v{color:var(--blue)} .sim-kv.lose .v{color:var(--red)}
+  .sim-kv .dim, .check .dim{font-size:11px;color:var(--faint);font-weight:600}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray);font-weight:600;cursor:pointer;margin-top:12px;user-select:none}
+  .check input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex:0 0 auto}
+  .sim-note{padding:8px 2px 0;font-size:13px;color:var(--gray);font-weight:600;line-height:1.6}
+  .sim-note b{color:var(--blue)}
+  .sim-kv.sub{padding:3px 0}
+  .sim-kv.sub .k{font-size:11.5px;color:var(--muted);font-weight:600}
+  .sim-kv.sub .v{font-size:12px;font-weight:700}
+  .sim-hero{margin-top:10px;padding-top:12px;border-top:2px solid var(--line)}
+  .sim-hero .hk{font-size:12.5px;color:var(--gray);font-weight:700}
+  .sim-hero .hv{font-size:26px;font-weight:800;color:var(--blue);line-height:1.15;margin-top:5px;font-variant-numeric:tabular-nums}
+  .sim-hero .hv .u{font-size:15px;font-weight:700;margin-left:3px}
+  .sim-hero .hsub{font-size:12px;color:var(--faint);font-weight:600;margin-top:3px}
+  .sim-hero.lose .hv{color:var(--red)}
+
+  footer{margin-top:28px;color:var(--faint);font-size:12px;text-align:center;font-weight:500;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="dot">🍁</div>
+      <div>
+        <h1>메이플랜드 캐시 효율 계산기</h1>
+        <p class="sub">경매장 가격 <a href="https://maplanet.net/캐시아이템" target="_blank" rel="noopener">maplanet.net</a> 실시간 · 캐시 정가(원)는 코드 고정값</p>
+      </div>
+    </div>
+    <div class="refresh">
+      <button class="btn" id="refresh">새로고침</button>
+      <div class="status" id="status">불러오는 중…</div>
+    </div>
+  </header>
+
+  <div class="layout">
+  <aside class="sidebar">
+
+  <!-- ① 물통 대비 효율 -->
+  <section class="card">
+    <h2>물통 1개 가격 설정 <span class="info" tabindex="0"><span class="tip">물통은 항상 100만 메소예요. 물통 가격(원)만 넣으면 기준선이 계산돼요. 예: 550원이면 → 100만 메소당 550원 · 1,000원당 약 181만 메소가 기준선.</span></span></h2>
+    <div class="row">
+      <div class="field">
+        <label>물통 가격 (원)</label>
+        <input type="number" id="bottleWon" step="10" placeholder="예: 550" />
+      </div>
+    </div>
+    <div class="baseinfo" id="baseInfo">
+      <div class="bi"><span class="bi-k">1,000원당</span><span class="bi-v" id="biMeso">—</span></div>
+    </div>
+  </section>
+
+  <!-- ③ 보유 캐시 시뮬 -->
+  <section class="card">
+    <h2>예상 메소 계산기 <span class="info" tabindex="0"><span class="tip">가진 현금(원)으로 아이템을 사서 팔면 메소가 얼마나 나오는지 알려줘요. 표에서 아이템을 클릭하면 그 아이템 기준으로 계산(안 하면 최고 효율).</span></span></h2>
+    <div class="row">
+      <div class="field">
+        <label>내 보유 캐시 (원)</label>
+        <input type="number" id="holdings" step="100" placeholder="예: 30000" />
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="fee"> 경매장 수수료 적용 <span class="dim">(−10%)</span></label>
+    <div class="sim-out empty" id="sim">보유 금액(원)을 입력하면 예상 메소를 계산해 드려요.</div>
+  </section>
+
+  </aside>
+  <main class="main">
+
+  <!-- ② 아이템 효율 -->
+  <section class="card">
+    <div class="card-head">
+      <h2>아이템 효율 랭킹 <span class="note" id="dataDate" style="display:inline;margin:0"></span> <span class="warn">현재 시세가 아닌 오전 기준 시세이므로 꼭, 현재 경매장 시세를 확인 후 예상 메소 계산기를 사용해주세요.</span> <span class="info" tabindex="0"><span class="tip">1,000원당 메소가 높을수록 사서 팔면 이득. [메소 수정]으로 시세 편집 · 헤더 클릭 정렬 · 행 클릭 시 그 아이템으로 시뮬.</span></span></h2>
+    </div>
+    <div class="tbl-scroll">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th class="left">#</th>
+            <th class="left" data-sort="name">아이템</th>
+            <th class="mid" data-sort="price">경매장 가격</th>
+            <th class="left">7일 추이</th>
+            <th class="mid" data-sort="won">캐시가(원)</th>
+            <th data-sort="perK">1,000원당 메소</th>
+            <th data-sort="gain">물통 대비 이득</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span>캐시가(원)는 고정값 · 경매장 가격은 직접 수정 가능</span>
+    </div>
+  </section>
+
+  </main>
+  </div>
+
+  <footer>
+    경매장 가격 maplanet.net (거래소 OCR · 최대 1분 캐시) · 셀 클릭해 임시 수정(새로고침 시 리셋) · 캐시 정가(원)는 코드 고정
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- 고정값(하드코딩): 캐시 정가 = 원(KRW) ----------
+   conf: ok=원가 근거 확인 / guess=추정 / need=미확인(비움)
+   (월드코인가는 1코인=7.5원 기준으로 원 환산: 400코인=3,000원)      */
+const SEED = {   // 캐시 정가(원) — 하드코딩 고정값(표에선 표시 전용). 미확정은 null → 추후 정확값으로 갱신.
+  "MSW 아바타 코디 이용권 (30일)": { won: 5500, conf: "user" },
+  "주니어 리퍼":                 { won: 7900, conf: "user" },
+  "SP 초기화 주문서":             { won: 7900, conf: "user" },
+  "AP 초기화 주문서":             { won: 8900, conf: "user" },
+  "보따리상인 묘묘":              { won: 2500, conf: "user" },
+  "미라클 큐브":                 { won: 409,  conf: "user", bundle: true },   // 45,000원 = 110개
+  "선택 슬롯 4칸 확장권":         { won: 2900, conf: "user" },
+  "고성능 순간이동의 돌":         { won: 181, conf: "user" },
+  "고성능 확성기":               { won: 454, conf: "user", bundle: true },
+  "운명의 수레바퀴":             { won: 272, conf: "user", bundle: true },
+  "호신부적":                   { won: 181, conf: "user", bundle: true },
+};
+
+const API = "https://api.maplanet.net/api/market-data";
+const LS_KEY = "mapleland-cash-calc-v4";   // v3→v4(기준선=물통 가격): 옛 baseline 값 무시
+const BOTTLE_MESO = 1000000;               // 물통은 항상 100만 메소 고정
+
+/* ---------- 저장소 (cache는 캐시아이템 핵심만 슬림 저장) ---------- */
+function loadStore(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch(e){ return {}; } }
+// 새로고침 시 초기화할 순간 상태(저장 제외). 나머지(수정값·물통가·수수료·cache)만 유지.
+const NO_SAVE = {selectedName:1, mesoOverride:1, holdings:1, sortKey:1, sortDir:1};  // 새로고침 시 초기화(메소 수정=API값 리셋)
+function saveStore(){
+  const persist={};
+  for(const k in store) if(!NO_SAVE[k]) persist[k]=store[k];
+  localStorage.setItem(LS_KEY, JSON.stringify(persist));
+}
+const store = Object.assign({
+  mesoOverride:{}, bottleWon:550, holdings:null, sortKey:"perK", sortDir:"desc", fee:true, selectedName:null, cache:null,
+}, loadStore());
+
+let ITEMS = [];
+
+/* ---------- 유틸 ---------- */
+const $ = s => document.querySelector(s);
+const fmt  = n => (n==null||!isFinite(n)) ? "-" : Math.round(n).toLocaleString("ko-KR");
+const fmt1 = n => (n==null||!isFinite(n)) ? "-" : (Math.round(n*10)/10).toLocaleString("ko-KR");
+const has  = v => v!=null && v!=="" && !isNaN(v);
+/* 큰 수를 한글 억/만 단위로 (예: 637030588 → "6억 3,703만") */
+function toKor(n){
+  if(n==null||!isFinite(n)) return "-";
+  n=Math.round(n); if(n===0) return "0";
+  const neg=n<0; n=Math.abs(n);
+  const eok=Math.floor(n/1e8), man=Math.floor((n%1e8)/1e4), rest=n%1e4;
+  const p=[];
+  if(eok) p.push(eok.toLocaleString("ko-KR")+"억");
+  if(man) p.push(man.toLocaleString("ko-KR")+"만");
+  if(rest && !eok && !man) p.push(rest.toLocaleString("ko-KR")); // 만 미만 소액만 원단위 표기
+  if(!p.length) p.push(n.toLocaleString("ko-KR"));
+  return (neg?"-":"")+p.join(" ");
+}
+
+function wonOf(name){ return SEED[name] ? SEED[name].won : null; }   // 캐시 정가(원) = 코드 고정(SEED)
+function confOf(name){ return wonOf(name)!=null ? "user" : "need"; }   // 값 있으면 뱃지 없음, 없으면 '입력'
+function mesoOf(it){   // 메소 시세 = 사용자 입력(오버라이드) 우선, 없으면 API
+  const o=store.mesoOverride[it.name];
+  return has(o) ? Number(o) : it.price;
+}
+
+/* ---------- API ---------- */
+async function fetchData(){
+  store.mesoOverride = {};   // 새로고침 = 셀 편집값 버리고 최신 시세로 (footer "새로고침 시 리셋"과 일치)
+  setStatus("불러오는 중…", false);
+  try{
+    const res = await fetch(API, {cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const data = await res.json();
+    const cash = (data.items||[]).filter(i=>i.category==="캐시아이템");
+    let latest=""; cash.forEach(i=>(i.history||[]).forEach(h=>{ if(h.date>latest) latest=h.date; }));
+    const slim = cash.map(i=>({name:i.name, price:i.price, changePct:i.changePct, image:i.image, history:i.history||[]}));
+    store.cache = {latest, items:slim}; saveStore();
+    applyData(slim, latest, false);
+  }catch(err){
+    if(store.cache) applyData(store.cache.items, store.cache.latest, true);
+    else setStatus("시세를 불러오지 못했어요 ("+err.message+"). 새로고침 해주세요.", true);
+  }
+}
+function applyData(items, latest, stale){
+  ITEMS = items||[];
+  $("#dataDate").textContent = latest ? "· "+latest+" 기준" : "";
+  setStatus((stale?"⚠ 오프라인 · 마지막 저장 시세":"실시간 갱신 완료")+" · "+ITEMS.length+"종", stale);
+  render();
+}
+function setStatus(msg, err){ const el=$("#status"); el.textContent=msg; el.className="status"+(err?" err":""); }
+
+/* ---------- 렌더 ---------- */
+// 물통 = 100만 메소 고정. 기준선 = 100만 ÷ 물통가격(원) × 1000  (1,000원당 메소)
+function baselinePerK(){
+  const w=Number(store.bottleWon);
+  return (has(store.bottleWon)&&w>0) ? BOTTLE_MESO/w*1000 : null;
+}
+function updateBaseInfo(){
+  const perK=baselinePerK();
+  $("#biMeso").textContent = perK!=null ? (toKor(perK)+" 메소") : "—"; // 1,000원당 메소
+}
+
+// 정렬: name=가나다 / 나머지=숫자, dir로 오름·내림, 값 없는 행(캐시가 미입력)은 항상 맨 아래
+function sortRows(rows, key, dir){
+  const sign = dir==="asc" ? 1 : -1;
+  const nullable = (key==="won"||key==="perK"||key==="gain");
+  const numOf = r => key==="price"?mesoOf(r.it) : key==="chg"?r.it.changePct
+                   : key==="won"?r.won : key==="perK"?r.perK : key==="gain"?r.gain : 0;
+  rows.sort((a,b)=>{
+    if(key==="name") return sign * a.it.name.localeCompare(b.it.name,"ko");
+    const x=numOf(a), y=numOf(b);
+    if(nullable){
+      const an=(x==null), bn=(y==null);
+      if(an&&bn) return 0;
+      if(an) return 1;      // 값 없으면 방향 무관 맨 아래
+      if(bn) return -1;
+    }
+    return sign*(x-y);
+  });
+}
+function updateSortHeaders(){
+  document.querySelectorAll("th[data-sort]").forEach(th=>{
+    const old=th.querySelector(".arr"); if(old) old.remove();
+    if(th.dataset.sort===store.sortKey){
+      const s=document.createElement("span"); s.className="arr";
+      s.textContent = store.sortDir==="asc" ? " ▲" : " ▼";
+      th.appendChild(s);
+    }
+  });
+}
+
+// 7일 시세 미니 그래프(sparkline) + 최근 3일/7일 변동
+function sparkline(history){
+  const p=(history||[]).map(h=>h.price).filter(v=>isFinite(v));
+  if(p.length<2) return '<span class="spark-none">-</span>';
+  const w=88,h=26,pad=3, min=Math.min(...p), max=Math.max(...p), rng=(max-min)||1;
+  const stp=(w-pad*2)/(p.length-1);
+  const pts=p.map((v,i)=>[pad+i*stp, h-pad-((v-min)/rng)*(h-pad*2)]);
+  const up = p[p.length-1] >= p[0];
+  const col = up ? "var(--red)" : "var(--blue)";   // 오름=빨강, 내림=파랑
+  const poly=pts.map(c=>c[0].toFixed(1)+","+c[1].toFixed(1)).join(" ");
+  const last=pts[pts.length-1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" points="${poly}"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2" fill="${col}"/></svg>`;
+}
+function recentChanges(history){
+  const p=(history||[]).map(h=>h.price).filter(v=>isFinite(v));
+  if(p.length<2) return {d3:null,d7:null};
+  const now=p[p.length-1], b7=p[0], b3=p[Math.max(0,p.length-4)];
+  const pct=(a,b)=> b>0 ? (a-b)/b*100 : null;
+  return { d3:pct(now,b3), d7:pct(now,b7) };
+}
+function pctSpan(v){
+  if(v==null) return '<span class="flat">-</span>';
+  const c=v>0?"up":(v<0?"down":"flat");
+  return `<span class="${c}">${v>0?"+":""}${fmt1(v)}%</span>`;
+}
+
+function render(){
+  const base = baselinePerK();
+
+  const rows = ITEMS.map(it=>{
+    const won = wonOf(it.name);
+    const perK = (won&&won>0) ? mesoOf(it)/won*1000 : null;   // 1,000원당 메소 (메소=오버라이드 우선)
+    const gain = (perK!=null&&base) ? (perK/base-1) : null;
+    return {it, won, perK, gain, conf:confOf(it.name)};
+  });
+
+  sortRows(rows, store.sortKey, store.sortDir);
+
+  const ranked=[...rows].filter(r=>r.perK!=null).sort((a,b)=>b.perK-a.perK);
+  const rankOf=new Map(ranked.map((r,i)=>[r.it.name,i+1]));
+  const bestName = ranked.length?ranked[0].it.name:null;
+  let activeName = bestName;   // 시뮬 타깃(=파랑 하이라이트): 선택 행 있으면 그것, 없으면 최고효율
+  if(store.selectedName && ITEMS.some(i=>i.name===store.selectedName)) activeName = store.selectedName;
+  const medals={1:"🥇",2:"🥈",3:"🥉"};
+
+  $("#rows").innerHTML = rows.map(r=>{
+    const it=r.it, rank=rankOf.get(it.name);
+    const rc = recentChanges(it.history);
+    const dn = it.name.replace(/"/g,'&quot;');
+    const editedTag = has(store.mesoOverride[it.name]) ? ' <span class="edited">(수정됨)</span>' : '';  // 오버라이드 있으면 표시
+    const mesoCell = `<td class="mid num mesocell" data-name="${dn}" title="클릭해서 수정">${fmt(mesoOf(it))}${editedTag}</td>`;  // 건별 인라인 수정
+    const cashCell = `<td class="mid num cashfix">${r.won!=null?fmt(r.won):'—'}</td>`;  // 표시 전용(코드 고정)
+    const badge = {ok:'<span class="badge ok">확인</span>',guess:'<span class="badge guess">추정</span>',
+                   need:'<span class="badge need">입력</span>',user:''}[r.conf]||"";
+    const packBadge = (SEED[it.name]&&SEED[it.name].bundle) ? '<span class="badge pack">묶음단가</span>' : '';  // 묶음 개당 환산가 항목
+    let gainCell='<span class="gain na">물통값 입력</span>';
+    if(r.perK==null) gainCell='<span class="gain na">캐시가 미정</span>';
+    else if(r.gain!=null){
+      const cls=r.gain>=0?"pos":"neg";
+      gainCell='<span class="gain '+cls+'">'+(r.gain>=0?"+":"")+fmt1(r.gain*100)+'%</span>';
+    }
+    const rankTxt = rank ? (medals[rank]||rank) : '–';
+    return `<tr data-name="${it.name.replace(/"/g,'&quot;')}" class="${it.name===activeName?'active':''} ${r.won==null?'nocost':''}">
+      <td class="left"><span class="rank ${medals[rank]?'medal':''}">${rankTxt}</span></td>
+      <td class="left"><div class="name">
+        ${it.image?`<img src="${it.image}" alt="" onerror="this.style.display='none'">`:''}
+        <span class="nm">${it.name}${badge}${packBadge}</span>
+      </div></td>
+      ${mesoCell}
+      <td class="left">${sparkline(it.history)}<div class="spark-pct">3일 ${pctSpan(rc.d3)} · 7일 ${pctSpan(rc.d7)}</div></td>
+      ${cashCell}
+      <td class="num perk">${fmt(r.perK)}</td>
+      <td>${gainCell}</td>
+    </tr>`;
+  }).join("");
+
+  updateBaseInfo();
+  updateSortHeaders();
+  document.querySelectorAll(".mesocell").forEach(td=>{   // 경매장 가격: 셀 클릭 → 건별 인라인 수정(세션 한정 · 새로고침 시 API값 리셋)
+    td.addEventListener("click", e=>{
+      e.stopPropagation();                              // 행 선택 방지
+      if(td.querySelector("input")) return;
+      const name=td.dataset.name, cur=mesoOf(ITEMS.find(i=>i.name===name));
+      td.innerHTML=`<input class="cellinput num" type="number" min="0" step="1000" value="${cur}">`;
+      const inp=td.querySelector("input"); inp.focus(); inp.select();
+      inp.addEventListener("input", ()=>{ const v=inp.value; store.mesoOverride[name]=(v===""?null:Number(v)); updateRowLive(inp,name); });
+      inp.addEventListener("keydown", ev=>{ if(ev.key==="Enter"||ev.key==="Escape") inp.blur(); });
+      inp.addEventListener("blur", ()=> render());      // 커밋 → 표 다시 그림(재정렬)
+    });
+  });
+
+  $("#rows").querySelectorAll("tr").forEach(tr=>{      // 행 클릭 → 그 아이템으로 시뮬(다시 클릭 = 해제→자동)
+    tr.addEventListener("click", e=>{
+      if(e.target.closest("input")) return;           // 입력칸 클릭은 선택 아님
+      const name=tr.dataset.name;
+      store.selectedName = (store.selectedName===name) ? null : name;
+      saveStore(); render();
+    });
+  });
+
+  renderSim();
+}
+
+/* 타이핑 중인 행의 파생 셀만 제자리 갱신 (표 전체 rebuild X → 포커스 유지) */
+function updateRowLive(inp, name){
+  const item=ITEMS.find(i=>i.name===name); if(!item) return;
+  const base=baselinePerK(), won=wonOf(name);
+  const perK=(won&&won>0)?mesoOf(item)/won*1000:null;
+  const gain=(perK!=null&&base)?(perK/base-1):null;
+  const tr=inp.closest("tr"); if(!tr) return;
+  tr.classList.toggle("nocost", won==null);   // 캐시가 편집 시 값 유무 반영
+
+  const pc=tr.querySelector(".perk"); if(pc) pc.textContent=fmt(perK);
+
+  const gc=tr.querySelector("td:last-child");
+  if(gc){
+    if(perK==null) gc.innerHTML='<span class="gain na">캐시가 미정</span>';
+    else if(gain==null) gc.innerHTML='<span class="gain na">물통값 입력</span>';
+    else{ const cls=gain>=0?"pos":"neg"; gc.innerHTML='<span class="gain '+cls+'">'+(gain>=0?"+":"")+fmt1(gain*100)+'%</span>'; }
+  }
+  renderSim();
+}
+
+/* ---------- 시뮬 ---------- */
+function renderSim(){
+  const cash=Number(store.holdings), out=$("#sim");
+  if(!(has(store.holdings)&&cash>0)){
+    out.className="sim-out empty"; out.textContent="보유 금액(원)을 입력하면 예상 메소를 계산해 드려요."; return;
+  }
+  out.className="sim-out";
+
+  // 시뮬 대상: 표에서 클릭 선택한 아이템 우선, 없으면 최고 효율(자동)
+  let best=null, manual=false;
+  if(store.selectedName){
+    const sel=ITEMS.find(i=>i.name===store.selectedName);
+    if(sel){
+      const won=wonOf(sel.name);
+      if(won&&won>0){ best={it:sel, won, perK:mesoOf(sel)/won*1000}; manual=true; }
+      else {   // 선택했지만 캐시 정가 미정
+        let h=`<div class="sim-head">`;
+        if(sel.image) h+=`<img src="${sel.image}" alt="" onerror="this.style.display='none'">`;
+        h+=`<div><div class="nm">${sel.name}</div><div class="eff dim">시뮬 대상 · 선택</div></div></div>`;
+        h+=`<div class="sim-note">이 아이템은 <b>캐시 정가</b>가 아직 없어요(추후 반영).</div>`;
+        out.innerHTML=h; return;
+      }
+    }
+  }
+  if(!best){
+    const ranked=ITEMS.map(it=>({it,won:wonOf(it.name)})).filter(r=>r.won&&r.won>0)
+                      .map(r=>({...r, perK:mesoOf(r.it)/r.won*1000})).sort((a,b)=>b.perK-a.perK);
+    if(!ranked.length){ out.textContent="캐시 정가가 있는 아이템이 없어요."; return; }
+    best=ranked[0];
+  }
+
+  const qty=Math.floor(cash/best.won), used=qty*best.won;
+
+  let html=`<div class="sim-head">`;
+  if(best.it.image) html+=`<img src="${best.it.image}" alt="" onerror="this.style.display='none'">`;
+  html+=`<div><div class="nm">${best.it.name}</div><div class="eff">1,000원당 ${toKor(best.perK)} 메소 <span class="dim">· ${manual?"선택":"최고효율"}</span></div></div></div>`;
+  html+=`<div class="sim-kv"><span class="k">보유 캐시</span><span class="v">${fmt(cash)}원</span></div>`;
+
+  if(qty<=0){   // 1개도 못 삼 → 구매 불가 (예상 메소 등 표시 안 함)
+    html+=`<div class="sim-hero lose"><div class="hk">구매 불가</div><div class="hv" style="font-size:18px">1개 ${fmt(best.won)}원</div><div class="hsub">보유 ${fmt(cash)}원보다 비쌈</div></div>`;
+    out.innerHTML=html; return;
+  }
+
+  const feeOn=!!store.fee, feeMul=feeOn?0.9:1;
+  const base=baselinePerK(), rate=base!=null?base/1000:null;      // 메소/원 (물통 기준)
+  const total=Math.round(qty*mesoOf(best.it)*feeMul);            // 예상 메소 = 실제 산 아이템 판매 메소(잔여 미포함)
+  const leftover=cash-used;                                      // 남는 현금(아이템 못 사는 잔돈)
+  const directUsed=rate!=null?Math.round(used*rate):null;        // 쓴 캐시만큼 물통 샀다면(잔여는 물통에서 뺌)
+
+  html+=`<div class="sim-kv"><span class="k">구매 개수</span><span class="v">${fmt(qty)}개<small>${fmt(used)}원 사용${leftover>0?` · 잔여 ${fmt(leftover)}원`:""}</small></span></div>`;
+  if(directUsed!=null){   // 물통 참고 = 작게 (쓴 캐시 기준)
+    const diff=total-directUsed, cls=diff>=0?"win":"lose";
+    html+=`<div class="sim-kv sub"><span class="k">물통 샀다면 (${fmt(used)}원)</span><span class="v">${toKor(directUsed)} 메소</span></div>`;
+    html+=`<div class="sim-kv sub ${cls}"><span class="k">물통 대비</span><span class="v">${diff>=0?"이득 +":"손해 "}${toKor(diff)} 메소</span></div>`;
+  }
+  // 예상 메소 = 가장 중요 → 맨 아래 크게(hero)
+  html+=`<div class="sim-hero"><div class="hk">예상 메소</div><div class="hv">${toKor(total)}<span class="u">메소</span></div><div class="hsub">${fmt(total)} 메소</div></div>`;
+  out.innerHTML=html;
+}
+
+/* ---------- 바인딩 & 시작 ---------- */
+(function init(){
+  const bw=$("#bottleWon"); bw.value=store.bottleWon??"";
+  bw.addEventListener("input", e=>{ store.bottleWon=e.target.value===""?null:Number(e.target.value); saveStore(); render(); });
+
+  const hold=$("#holdings"); hold.value=store.holdings??"";
+  hold.addEventListener("input", e=>{ store.holdings=e.target.value===""?null:Number(e.target.value); saveStore(); renderSim(); });
+
+  const fee=$("#fee"); fee.checked=!!store.fee;
+  fee.addEventListener("change", e=>{ store.fee=e.target.checked; saveStore(); renderSim(); });
+
+  $("#refresh").addEventListener("click", fetchData);
+  document.querySelectorAll("th[data-sort]").forEach(th=>
+    th.addEventListener("click", ()=>{
+      const k=th.dataset.sort;
+      if(store.sortKey===k) store.sortDir = store.sortDir==="asc"?"desc":"asc";  // 같은 컬럼 → 방향 토글
+      else { store.sortKey=k; store.sortDir = (k==="name")?"asc":"desc"; }       // 새 컬럼 → 기본 방향
+      saveStore(); render();
+    }));
+
+  fetchData();
+})();
+</script>
+</body>
+</html>
